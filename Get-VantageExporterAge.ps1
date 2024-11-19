@@ -12,8 +12,8 @@ function Check-FileCompliance {
     # Threshold in minutes from the config
     $thresholdMinutes = $config.ThresholdMinutes
 
-    # Array to hold out-of-compliance file details
-    $outOfComplianceFiles = @()
+    # Dictionary to hold out-of-compliance file details grouped by server
+    $outOfComplianceFilesByServer = @{}
 
     # Iterate through each remote path specified in the config
     foreach ($remotePath in $config.RemotePaths) {
@@ -31,8 +31,11 @@ function Check-FileCompliance {
                 # Create the file path relative to the remote server
                 $relativePath = ($file.FullName -replace "^\\\\$serverName\\", "")
 
-                $outOfComplianceFiles += [PSCustomObject]@{
-                    ServerName    = $serverName
+                # Replace any $ signs with : for drive letter replacement
+                $relativePath = $relativePath -replace '\$', ':'
+
+                $outOfComplianceFilesByServer[$serverName] = $outOfComplianceFilesByServer[$serverName] ?: @()
+                $outOfComplianceFilesByServer[$serverName] += [PSCustomObject]@{
                     FullDirectory = $relativePath
                     CreationDate  = $file.CreationTime
                     FileSize      = [math]::Round($file.Length / 1MB, 2)
@@ -42,10 +45,27 @@ function Check-FileCompliance {
     }
 
     # Send email if there are files out of compliance
-    if ($outOfComplianceFiles.Count -gt 0) {
-        # Construct the body of the email
-        $body = "$($config.ComplianceMessage)`n`n"
-        $body += $outOfComplianceFiles | Format-Table -AutoSize | Out-String
+    if ($outOfComplianceFilesByServer.Count -gt 0) {
+        # Construct the HTML body
+        $body = "<html><body>"
+        $body += "<h2>$($config.ComplianceMessage)</h2>"
+
+        foreach ($serverName in $outOfComplianceFilesByServer.Keys) {
+            $body += "<h3>Server: $serverName</h3>"
+            $body += "<table border='1' cellspacing='0' cellpadding='5'><tr><th>Full Directory</th><th>Creation Date</th><th>File Size (MB)</th></tr>"
+
+            foreach ($file in $outOfComplianceFilesByServer[$serverName]) {
+                $body += "<tr>"
+                $body += "<td>$($file.FullDirectory)</td>"
+                $body += "<td>$($file.CreationDate)</td>"
+                $body += "<td>$($file.FileSize)</td>"
+                $body += "</tr>"
+            }
+
+            $body += "</table><br/>"
+        }
+
+        $body += "</body></html>"
 
         # Prepare the log file attachment path
         $logFilePath = (Join-Path -Path (Split-Path -Path $MyInvocation.MyCommand.Path -Parent) -ChildPath "Log.Log")
@@ -56,7 +76,7 @@ function Check-FileCompliance {
             To         = $config.EmailTo
             Subject    = $config.EmailSubject
             Body       = $body
-            BodyAsHtml = $false
+            BodyAsHtml = $true
             SmtpServer = $config.SMTPServer
         }
 

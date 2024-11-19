@@ -27,21 +27,32 @@ function Check-FileCompliance {
         # Check each file's creation date
         foreach ($file in $files) {
             $fileAgeMinutes = ($currentTime - $file.CreationTime).TotalMinutes
+            Write-Host "Checking file: $($file.FullName) - Age in minutes: $fileAgeMinutes"
+
+            # Check if the file is older than the threshold
             if ($fileAgeMinutes -gt $thresholdMinutes) {
+                Write-Host "File $($file.FullName) is out of compliance."
+
                 # Create the file path relative to the remote server
                 $relativePath = ($file.FullName -replace "^\\\\$serverName\\", "")
 
                 # Replace any $ signs with : for drive letter replacement
                 $relativePath = $relativePath -replace '\$', ':'
 
+                # Check if the dictionary already has an entry for the server, otherwise initialize an empty list
                 if (-not $outOfComplianceFilesByServer.ContainsKey($serverName)) {
                     $outOfComplianceFilesByServer[$serverName] = @()
-}
+                }
+
+                # Append the current file to the server's list
                 $outOfComplianceFilesByServer[$serverName] += [PSCustomObject]@{
                     FullDirectory = $relativePath
                     CreationDate  = $file.CreationTime
                     FileSize      = [math]::Round($file.Length / 1MB, 2)
                 }
+
+            } else {
+                Write-Host "File $($file.FullName) is within the compliance threshold."
             }
         }
     }
@@ -97,9 +108,11 @@ function Check-FileCompliance {
         }
 
         Send-MailMessage @emailParams
+    } else {
+        Write-Host "No files were found to be out of compliance."
     }
 }
 
 # Example usage for running as a scheduled task
-$ConfigPath = "C:\Path\To\config.json"
+$ConfigPath = "$psscriptRoot\config.json"
 Check-FileCompliance -ConfigPath $ConfigPath

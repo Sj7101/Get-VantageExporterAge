@@ -1,0 +1,16 @@
+{
+    "ThresholdMinutes": 15,
+    "SMTPServer": "smtp.example.com",
+    "SMTPPort": 587,
+    "SMTPUser": "user@example.com",
+    "SMTPPassword": "password",
+    "EmailTo": "recipient@example.com",
+    "EmailFrom": "sender@example.com",
+    "EmailSubject": "Compliance Alert: Files Out of Compliance",
+    "ComplianceMessage": "The following files are out of compliance:",
+    "RemotePaths": [
+        "\\RemoteServer1\Share\Folder",
+        "\\RemoteServer2\AnotherShare\Folder",
+        "\\RemoteServer3\YetAnotherShare\Directory"
+    ]
+}

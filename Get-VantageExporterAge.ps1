@@ -29,7 +29,7 @@ function Check-FileCompliance {
             $fileAgeMinutes = ($currentTime - $file.CreationTime).TotalMinutes
             if ($fileAgeMinutes -gt $thresholdMinutes) {
                 # Create the file path relative to the remote server
-                $relativePath = $file.FullName -replace "\\\\$serverName", ""
+                $relativePath = ($file.FullName -replace "^\\\\$serverName\\", "")
 
                 $outOfComplianceFiles += [PSCustomObject]@{
                     ServerName    = $serverName
@@ -43,41 +43,28 @@ function Check-FileCompliance {
 
     # Send email if there are files out of compliance
     if ($outOfComplianceFiles.Count -gt 0) {
+        # Construct the body of the email
         $body = "$($config.ComplianceMessage)`n`n"
         $body += $outOfComplianceFiles | Format-Table -AutoSize | Out-String
 
-        # Prepare the email parameters
-        $smtpServer = $config.SMTPServer
-        $smtpPort = $config.SMTPPort
-        $smtpUser = $config.SMTPUser
-        $smtpPassword = $config.SMTPPassword
-        $emailTo = $config.EmailTo
-        $emailFrom = $config.EmailFrom
-        $emailSubject = $config.EmailSubject
+        # Prepare the log file attachment path
+        $logFilePath = (Join-Path -Path (Split-Path -Path $MyInvocation.MyCommand.Path -Parent) -ChildPath "Log.Log")
 
         # Send the email
-        $smtpClient = New-Object System.Net.Mail.SmtpClient($smtpServer, $smtpPort)
-        $smtpClient.EnableSsl = $true
-        $smtpClient.Credentials = New-Object System.Net.NetworkCredential($smtpUser, $smtpPassword)
+        $emailParams = @{
+            From       = $config.EmailFrom
+            To         = $config.EmailTo
+            Subject    = $config.EmailSubject
+            Body       = $body
+            BodyAsHtml = $false
+            SmtpServer = $config.SMTPServer
+        }
 
-        $mailMessage = New-Object System.Net.Mail.MailMessage
-        $mailMessage.From = $emailFrom
-        $mailMessage.To.Add($emailTo)
-        $mailMessage.Subject = $emailSubject
-        $mailMessage.Body = $body
-
-        # Attach the log file
-        $logFilePath = (Join-Path -Path (Split-Path -Path $MyInvocation.MyCommand.Path -Parent) -ChildPath "Log.Log")
         if (Test-Path $logFilePath) {
-            $attachment = New-Object System.Net.Mail.Attachment($logFilePath)
-            $mailMessage.Attachments.Add($attachment)
+            $emailParams.Add("Attachments", $logFilePath)
         }
 
-        $smtpClient.Send($mailMessage)
-
-        if ($attachment) {
-            $attachment.Dispose()
-        }
+        Send-MailMessage @emailParams
     }
 }
 

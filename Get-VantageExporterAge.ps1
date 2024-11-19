@@ -34,7 +34,9 @@ function Check-FileCompliance {
                 # Replace any $ signs with : for drive letter replacement
                 $relativePath = $relativePath -replace '\$', ':'
 
-                $outOfComplianceFilesByServer[$serverName] = $outOfComplianceFilesByServer[$serverName] ?: @()
+                if (-not $outOfComplianceFilesByServer.ContainsKey($serverName)) {
+                    $outOfComplianceFilesByServer[$serverName] = @()
+}
                 $outOfComplianceFilesByServer[$serverName] += [PSCustomObject]@{
                     FullDirectory = $relativePath
                     CreationDate  = $file.CreationTime

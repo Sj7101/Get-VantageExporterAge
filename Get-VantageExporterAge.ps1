@@ -17,8 +17,9 @@ function Check-FileCompliance {
 
     # Iterate through each remote path specified in the config
     foreach ($remotePath in $config.RemotePaths) {
-        # Extract server name from the remote path
+        # Extract server name and base path from the remote path
         $serverName = ($remotePath -split '\\')[2]
+        $basePath = $remotePath -replace "\\\\$serverName", ""
 
         # Get all files in the directory
         $files = Get-ChildItem -Path $remotePath -Recurse -File -ErrorAction SilentlyContinue
@@ -27,9 +28,12 @@ function Check-FileCompliance {
         foreach ($file in $files) {
             $fileAgeMinutes = ($currentTime - $file.CreationTime).TotalMinutes
             if ($fileAgeMinutes -gt $thresholdMinutes) {
+                # Create the file path relative to the remote server
+                $relativePath = $file.FullName -replace "\\\\$serverName", ""
+
                 $outOfComplianceFiles += [PSCustomObject]@{
                     ServerName    = $serverName
-                    FullDirectory = $file.FullName
+                    FullDirectory = $relativePath
                     CreationDate  = $file.CreationTime
                     FileSize      = [math]::Round($file.Length / 1MB, 2)
                 }

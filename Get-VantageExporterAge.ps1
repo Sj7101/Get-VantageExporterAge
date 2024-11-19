@@ -66,7 +66,18 @@ function Check-FileCompliance {
         $mailMessage.Subject = $emailSubject
         $mailMessage.Body = $body
 
+        # Attach the log file
+        $logFilePath = (Join-Path -Path (Split-Path -Path $MyInvocation.MyCommand.Path -Parent) -ChildPath "Log.Log")
+        if (Test-Path $logFilePath) {
+            $attachment = New-Object System.Net.Mail.Attachment($logFilePath)
+            $mailMessage.Attachments.Add($attachment)
+        }
+
         $smtpClient.Send($mailMessage)
+
+        if ($attachment) {
+            $attachment.Dispose()
+        }
     }
 }
 

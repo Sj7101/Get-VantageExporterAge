@@ -52,13 +52,23 @@ function Check-FileCompliance {
 
         foreach ($serverName in $outOfComplianceFilesByServer.Keys) {
             $body += "<h3>Server: $serverName</h3>"
-            $body += "<table border='1' cellspacing='0' cellpadding='5'><tr><th>Full Directory</th><th>Creation Date</th><th>File Size (MB)</th></tr>"
 
+            # Get the first object's properties for table headers
+            $properties = $outOfComplianceFilesByServer[$serverName][0].PSObject.Properties | ForEach-Object { $_.Name }
+
+            # Create table header
+            $body += "<table border='1' cellspacing='0' cellpadding='5'><tr>"
+            foreach ($property in $properties) {
+                $body += "<th>$property</th>"
+            }
+            $body += "</tr>"
+
+            # Create table rows
             foreach ($file in $outOfComplianceFilesByServer[$serverName]) {
                 $body += "<tr>"
-                $body += "<td>$($file.FullDirectory)</td>"
-                $body += "<td>$($file.CreationDate)</td>"
-                $body += "<td>$($file.FileSize)</td>"
+                foreach ($property in $properties) {
+                    $body += "<td>$($file.$property)</td>"
+                }
                 $body += "</tr>"
             }
 

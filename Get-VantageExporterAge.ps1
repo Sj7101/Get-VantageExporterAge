@@ -27,7 +27,7 @@ function Check-FileCompliance {
         # Check each file's creation date
         foreach ($file in $files) {
             $fileCreationTime = [datetime]$file.CreationTime
-            $fileAgeMinutes = ($currentTime - $fileCreationTime).TotalMinutes
+            $fileAgeMinutes = [math]::Floor(($currentTime - $fileCreationTime).TotalMinutes)
             Write-Host "Checking file: $($file.FullName) - Age in minutes: $fileAgeMinutes"
 
             # Check if the file is older than the threshold
